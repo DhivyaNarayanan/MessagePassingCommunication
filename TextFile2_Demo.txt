@@ -1,0 +1,76 @@
+Initial Thoughts:
+Design of software encompasses many things:
+Concept:
+Ideas about who the users are, what they need, and any critical issues about how those needs will be served, e.g., usability, complexity, safety, security, and robustness.
+Abstractions:
+Abstractions are conceptual models for the entities that are part of a software design. Entities are concrete things from the problem domain like products and orders, customers, employees, analyzers, displays, etc., and also for the solution domain where we may need to build complex data structures that define and manage program state.
+Flow of Execution:
+What computational activites are needed and how will they be ordered?
+Structure:
+Structure is some arrangement of parts. For software development the parts are:
+Functions and classes - the fundamental units of design.
+Packages - collections of functions and classes in one or two source code files focused on a single activity. For C and C++ a package has two files, a header file with declarations and inline definitions, and an implementation file containing the non-inline functions and a main function where execution may begin1. A package in Java or C# is a single file containing these same parts.
+Modules - collections of packages that combine to deliver some major functionality.
+Programs - combinations of modules that provide everything required to build an executable.
+Systems - combinations of programs that offer a complete working product.
+Communication and Accessibility:
+How does information flow between the various parts and how are event notifications routed to parts with need to know? Is information pushed by the creators or pulled by the consumers?
+Error Handling:
+How are errors handled by the design? Is each part responsible for it's own error handling or is there some central logging and reaction needed? Errors often affect the system state. How is that state recovered or reinitialized?
+Each of these are described in a bit more detail below.
+Operational Concept:
+Design usually begins with concept development - establishing user needs, critical issues, and top level package structure. Making a list of Tasks the software must complete to satisfy user needs is often a good way to start. Each task is a candidate to become a top-level package. We want our packages to be focused on a single activity so they are cohesive. We want them to be independently testable and composable with top-level packages for the other tasks.
+The project concept is its most abstract description and should be invariant over the lifetime of the development. Specifications may change because neither customers nor developers have perfect foresight. But they both need an invariant top-level view of the project even though many concrete details may be changing; the concept document plays this role.
+Abstractions:
+Developing problem domain abstractions usually comes early in the design process, and that development may be obvious for domain experts. Having a set of abstractions helps us define the parts that make up a system and the actions the parts take during the system's lifetime.
+Frequently abstractions turn into classes of the same name. We use the class relationships: inheritance, composition, aggregation, and using to model behaviors of the problem domain entities and actors. These are captured with the Universal Modeling Language (UML) - class, activity, and sequence diagrams.
+
+The process of defining abstractions and building their concrete representations continues in the solution domain. For the solution parts aliases can be a useful tool for thinking about and building that part's abstraction.
+
+The C++11 using construct represents an alias for some type. Here's an example declaring a symbol table abstraction with aliases:
+
+      template<typename typeinfo>
+      class SymbolTable
+      {
+      public:
+        using Type = std::string;
+        using Name = std::string;
+        using Record = std::tuple<type, name, typeinfo>
+        using Records = std::vector<record>
+ 
+        void add(const Record& record) { _records.push_back(record); }
+        Record& operator[](size_t i);
+        Record operator[](size_t i) const;
+        Records FindName(const Name& name);
+        Records FindType(const Type& type);
+        Records GetRecords() { return _records;  }
+      private:
+        Records _records;
+      };
+      
+We want to build the symbol table to record results of a type analysis, as outlined in the next paragraph. A record in the symbol table will hold information about a declaration, e.g., its type, name of the instance, and additional information like file name and line numbers. We're not sure yet about all the details, so we represent that by a template parameter and bind it all together into a symbol table record using a tuple.
+Flow of execution:
+
+Building a task list also helps us decide on an execution model. How must the tasks be ordered? Are there opportunities for parallel execution? Should computation be configured into two or more phases each of which makes some specific transformations on the project's working state?
+For example, suppose that we want to analyze dependency between files based on use of types, global functions, and global data. If File A uses a type or global function or data defined in File B then A depends on B.
+So, in Pass #1, we will parse each file in our working set to discover the types, global functions, and global data it defines, and store that in a symbol table along with the file name.
+
+In Pass #2, we simply tokenize each file and check to see if each token is a key in the symbol table. If so, this file depends on the file stored in the symbol table for that key.
+
+Building a data flow model may also be a good way to start thinking about execution. We need to ask what input data state is required for a task to carry out its assignment. How does that task need to restructure its input and what new data must it generate for the next task to consume?
+
+For file dependency analysis the input working set consists of the file set. The output of Pass #1 consists of a symbol table holding names of all the types, global functions, and global data along with the name of the file where defined.
+Pass #2 uses the file set and symbol table to generate a set of dependency relationships between files. We might represent that with XML or Json or links in a database table.
+
+Structure:
+
+Design decides the names and functionalities of the principle parts and how they interact. What dependencies are needed between the parts? What information has to be generated and made accessible by the parts? Here are several views of software structure:
+Logical models using classes and class relationships
+Allocation of classes to packages and package dependencies
+Establishing module boundaries with interfaces and object factories
+Forking execution into threads and processes
+Packaging of execution in binary files - executables and loadable modules
+Distribution of execution across processes, machines, and networks
+Each task identified during concept development is a candidate for the operation of a package. By this time we have a good idea of what that task needs to accomplish and what input state it needs to begin processing. The data flow model tells us how we need to order and couple the packages into modules and programs.
+
+Several of the structure views cited above are illustrated by a prototype I developed for a Message-passing Communication System. Message-passing is defined by a class hierarchy of communicators, each of which has a blocking message queue and a child thread that processes received messages.
